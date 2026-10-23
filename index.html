@@ -6408,5 +6408,126 @@ async function toggleAdminPanel(show) {
 </body>
 </html>
 
+<style>
+  .nx-draggable-button {
+    cursor: grab !important;
+    touch-action: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+
+  .nx-draggable-button.nx-dragging {
+    cursor: grabbing !important;
+    z-index: 999999 !important;
+  }
+</style>
+
+<script>
+(() => {
+  const labels = ["PUBLIC SERVERS", "ADMIN"];
+  const initialized = new WeakSet();
+
+  function setupDraggableButtons() {
+    const elements = document.querySelectorAll(
+      "button, [role='button'], input[type='button'], input[type='submit']"
+    );
+
+    elements.forEach(element => {
+      const text = (
+        element.innerText ||
+        element.value ||
+        element.getAttribute("aria-label") ||
+        ""
+      ).trim().toUpperCase();
+
+      const label = labels.find(name =>
+        text === name || text.startsWith(name + " ")
+      );
+
+      if (!label || initialized.has(element)) return;
+
+      initialized.add(element);
+      element.classList.add("nx-draggable-button");
+
+      let startX = 0;
+      let startY = 0;
+      let originalX = 0;
+      let originalY = 0;
+      let dragging = false;
+      let moved = false;
+
+      element.addEventListener("pointerdown", event => {
+        if (event.button !== 0 && event.pointerType === "mouse") return;
+
+        const rect = element.getBoundingClientRect();
+        startX = event.clientX;
+        startY = event.clientY;
+        originalX = rect.left;
+        originalY = rect.top;
+        dragging = true;
+        moved = false;
+
+        element.classList.add("nx-dragging");
+        element.style.position = "fixed";
+        element.style.left = rect.left + "px";
+        element.style.top = rect.top + "px";
+        element.style.right = "auto";
+        element.style.bottom = "auto";
+        element.style.margin = "0";
+        element.style.zIndex = "999999";
+      });
+
+      element.addEventListener("pointermove", event => {
+        if (!dragging) return;
+
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+
+        if (Math.abs(dx) + Math.abs(dy) > 5) moved = true;
+        if (!moved) return;
+
+        const maxX = window.innerWidth - element.offsetWidth;
+        const maxY = window.innerHeight - element.offsetHeight;
+
+        element.style.left =
+          Math.max(0, Math.min(maxX, originalX + dx)) + "px";
+        element.style.top =
+          Math.max(0, Math.min(maxY, originalY + dy)) + "px";
+      });
+
+      function stopDragging() {
+        if (!dragging) return;
+        dragging = false;
+        element.classList.remove("nx-dragging");
+
+        if (moved) {
+          element.dataset.nxJustDragged = "true";
+          setTimeout(() => {
+            delete element.dataset.nxJustDragged;
+          }, 250);
+        }
+      }
+
+      element.addEventListener("pointerup", stopDragging);
+      element.addEventListener("pointercancel", stopDragging);
+
+      element.addEventListener("click", event => {
+        if (element.dataset.nxJustDragged === "true") {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }, true);
+    });
+  }
+
+  setupDraggableButtons();
+
+  new MutationObserver(setupDraggableButtons).observe(
+    document.documentElement,
+    { childList: true, subtree: true }
+  );
+})();
+</script>
+
 </body>
 </html>
