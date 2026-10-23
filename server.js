@@ -1,8 +1,7 @@
-```js
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const { randomUUID } = require("crypto");
 
 const app = express();
 const server = http.createServer(app);
@@ -15,180 +14,144 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const MAX_PLAYERS = 50;
-const EMPTY_ROOM_DELAY = 15000;
+const ROOM_TIMEOUT = 30000;
 
+// Salons publics réellement annoncés par les hôtes PeerJS.
 const rooms = new Map();
 
-function listRooms() {
+function cleanCode(value) {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 6);
+}
+
+function getPublicRooms() {
+  const now = Date.now();
+
+  for (const [code, room] of rooms) {
+    if (now - room.updatedAt > ROOM_TIMEOUT) {
+      rooms.delete(code);
+    }
+  }
+
   return Array.from(rooms.values()).map(room => ({
-    id: room.id,
+    code: room.code,
     name: room.name,
-    players: room.players.size,
-    maxPlayers: MAX_PLAYERS
+    players: room.players,
+    maxPlayers: room.maxPlayers,
+    status: room.status
   }));
 }
 
-function broadcastList() {
-  io.emit("servers:list", listRooms());
-}
-
-function createRoom() {
-  const id = randomUUID().slice(0, 8);
-
-  const room = {
-    id,
-    name: `Cosmic Arena ${id.toUpperCase()}`,
-    players: new Map(),
-    emptyTimer: null
-  };
-
-  rooms.set(id, room);
-  return room;
-}
-
-function leaveRoom(socket) {
-  const roomId = socket.data.roomId;
-
-  if (!roomId) return;
-
-  delete socket.data.roomId;
-
-  const room = rooms.get(roomId);
-
-  if (!room) return;
-
-  room.players.delete(socket.id);
-  socket.leave(roomId);
-
-  io.to(roomId).emit("server:players", {
-    id: roomId,
-    players: room.players.size,
-    maxPlayers: MAX_PLAYERS
-  });
-
-  if (room.players.size === 0) {
-    room.emptyTimer = setTimeout(() => {
-      const currentRoom = rooms.get(roomId);
-
-      if (currentRoom && currentRoom.players.size === 0) {
-        rooms.delete(roomId);
-        broadcastList();
-      }
-    }, EMPTY_ROOM_DELAY);
-  }
-
-  broadcastList();
+function broadcastRooms() {
+  io.emit("public:rooms", getPublicRooms());
 }
 
 app.get("/", (req, res) => {
   res.json({
-    game: "Nexor.io",
+    game: "exar.io",
     status: "online",
     connected: io.engine.clientsCount,
-    servers: listRooms()
+    servers: getPublicRooms()
   });
 });
 
 app.get("/api/servers", (req, res) => {
-  res.json(listRooms());
+  res.json(getPublicRooms());
 });
 
 io.on("connection", socket => {
   console.log("Client connected:", socket.id);
 
-  socket.emit("servers:list", listRooms());
+  // Envoie la liste actuelle au nouveau client.
+  socket.emit("public:rooms", getPublicRooms());
 
-  socket.on("servers:list", () => {
-    socket.emit("servers:list", listRooms());
+  socket.on("public:list", () => {
+    socket.emit("public:rooms", getPublicRooms());
   });
 
-  socket.on("servers:join", (data = {}, callback) => {
-    const reply =
-      typeof callback === "function"
-        ? callback
-        : () => {};
+  // L'hôte annonce son véritable salon PeerJS.
+  socket.on("public:register", (data = {}) => {
+    const code = cleanCode(data.code);
 
-    let room;
+    if (!/^[A-Z0-9]{4,6}$/.test(code)) return;
 
-    if (data.serverId) {
-      room = rooms.get(String(data.serverId));
+    const maxPlayers = Math.max(
+      2,
+      Math.min(11, Math.floor(Number(data.maxPlayers) || 2))
+    );
 
-      if (!room) {
-        return reply({
-          ok: false,
-          error: "Server not found."
-        });
-      }
-    } else {
-      room = Array.from(rooms.values()).find(
-        candidate => candidate.players.size < MAX_PLAYERS
-      );
-    }
+    const players = Math.max(
+      1,
+      Math.min(maxPlayers, Math.floor(Number(data.players) || 1))
+    );
 
-    if (room && room.players.size >= MAX_PLAYERS) {
-      return reply({
-        ok: false,
-        error: "Server is full."
-      });
-    }
+    const status = data.status === "game" ? "game" : "lobby";
 
-    if (!room) {
-      room = createRoom();
-    }
+    const previous = rooms.get(code);
 
-    if (socket.data.roomId) {
-      leaveRoom(socket);
-    }
-
-    if (room.emptyTimer) {
-      clearTimeout(room.emptyTimer);
-      room.emptyTimer = null;
-    }
-
-    const name = String(data.name || "CosmoPlayer")
-      .replace(/[<>]/g, "")
-      .trim()
-      .slice(0, 16) || "CosmoPlayer";
-
-    room.players.set(socket.id, {
-      id: socket.id,
-      name
+    rooms.set(code, {
+      code,
+      name: String(data.name || "exar.io Arena")
+        .replace(/[<>]/g, "")
+        .trim()
+        .slice(0, 30) || "exar.io Arena",
+      players,
+      maxPlayers,
+      status,
+      ownerId: socket.id,
+      updatedAt: Date.now()
     });
 
-    socket.data.roomId = room.id;
-    socket.join(room.id);
+    console.log(
+      `Public room ${code}: ${players}/${maxPlayers} players (${status})`
+    );
 
-    reply({
-      ok: true,
-      server: {
-        id: room.id,
-        name: room.name,
-        players: room.players.size,
-        maxPlayers: MAX_PLAYERS
-      }
-    });
-
-    io.to(room.id).emit("server:players", {
-      id: room.id,
-      players: room.players.size,
-      maxPlayers: MAX_PLAYERS
-    });
-
-    broadcastList();
+    // Le salon est actualisé, même si son état a changé.
+    broadcastRooms();
   });
 
-  socket.on("servers:leave", () => {
-    leaveRoom(socket);
+  // L'hôte retire son salon de la liste publique.
+  socket.on("public:unregister", (data = {}) => {
+    const code = cleanCode(data.code);
+    const room = rooms.get(code);
+
+    // Un autre client ne peut pas supprimer le salon de l'hôte.
+    if (room && room.ownerId === socket.id) {
+      rooms.delete(code);
+      broadcastRooms();
+      console.log(`Public room ${code} removed`);
+    }
   });
 
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
-    leaveRoom(socket);
+
+    // Retire les salons appartenant à cette connexion.
+    let changed = false;
+
+    for (const [code, room] of rooms) {
+      if (room.ownerId === socket.id) {
+        rooms.delete(code);
+        changed = true;
+      }
+    }
+
+    if (changed) broadcastRooms();
   });
 });
 
+// Nettoyage périodique des annonces devenues obsolètes.
+setInterval(() => {
+  const before = rooms.size;
+  getPublicRooms();
+
+  if (rooms.size !== before) {
+    broadcastRooms();
+  }
+}, 10000);
+
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Nexor.io server running on port ${PORT}`);
+  console.log(`exar.io server running on port ${PORT}`);
 });
-```
