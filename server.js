@@ -6,202 +6,142 @@ const { randomUUID } = require("crypto");
 
 const app = express();
 const server = http.createServer(app);
-
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+  cors: { origin: "*" }
 });
 
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 50;
-const EMPTY_SERVER_DELAY = 15000;
+const rooms = new Map();
 
-const servers = new Map();
-
-function createServerRoom() {
-    const id = randomUUID().slice(0, 8);
-    const room = {
-        id,
-        name: `Cosmic Arena #${servers.size + 1}`,
-        players: new Map(),
-        createdAt: Date.now(),
-        emptyTimer: null
-    };
-
-    servers.set(id, room);
-    console.log("Server created:", room.name);
-    return room;
+function listRooms() {
+  return [...rooms.values()].map(r => ({
+    id: r.id,
+    name: r.name,
+    players: r.players.size,
+    maxPlayers: MAX_PLAYERS
+  }));
 }
 
-function publicServerList() {
-    return [...servers.values()]
-        .filter(room => room.players.size > 0)
-        .map(room => ({
-            id: room.id,
-            name: room.name,
-            players: room.players.size,
-            maxPlayers: MAX_PLAYERS,
-            status: "online"
-        }))
-        .sort((a, b) => a.players - b.players);
+function broadcastList() {
+  io.emit("servers:list", listRooms());
 }
 
-function updateLists() {
-    io.emit("servers:list", publicServerList());
+function createRoom() {
+  const id = randomUUID().slice(0, 8);
+  const room = {
+    id,
+    name: `Cosmic Arena ${id.toUpperCase()}`,
+    players: new Map(),
+    emptyTimer: null
+  };
+  rooms.set(id, room);
+  return room;
 }
 
-function getAvailableServer() {
-    for (const room of servers.values()) {
-        if (room.players.size < MAX_PLAYERS) {
-            return room;
-        }
-    }
+function leaveRoom(socket) {
+  const id = socket.data.roomId;
+  if (!id) return;
 
-    return createServerRoom();
-}
+  const room = rooms.get(id);
+  delete socket.data.roomId;
+  if (!room) return;
 
-function leaveServer(socket) {
-    const id = socket.data.serverId;
-    if (!id) return;
+  room.players.delete(socket.id);
+  socket.leave(id);
 
-    const room = servers.get(id);
-    delete socket.data.serverId;
+  io.to(id).emit("server:players", {
+    id,
+    players: room.players.size,
+    maxPlayers: MAX_PLAYERS
+  });
 
-    if (!room) return;
+  if (room.players.size === 0) {
+    room.emptyTimer = setTimeout(() => {
+      if (rooms.get(id)?.players.size === 0) {
+        rooms.delete(id);
+        broadcastList();
+      }
+    }, 15000);
+  }
 
-    room.players.delete(socket.id);
-    socket.leave(id);
-
-    io.to(id).emit("server:players", {
-        serverId: id,
-        players: room.players.size,
-        maxPlayers: MAX_PLAYERS
-    });
-
-    if (room.players.size === 0) {
-        room.emptyTimer = setTimeout(() => {
-            const current = servers.get(id);
-
-            if (current && current.players.size === 0) {
-                servers.delete(id);
-                console.log("Server removed:", current.name);
-                updateLists();
-            }
-        }, EMPTY_SERVER_DELAY);
-    }
-
-    updateLists();
+  broadcastList();
 }
 
 app.get("/", (req, res) => {
-    res.json({
-        game: "Nexor.io",
-        status: "online",
-        connectedPlayers: io.engine.clientsCount,
-        servers: publicServerList()
-    });
+  res.json({
+    game: "Nexor.io",
+    status: "online",
+    connected: io.engine.clientsCount,
+    servers: listRooms()
+  });
 });
 
 app.get("/api/servers", (req, res) => {
-    res.json(publicServerList());
+  res.json(listRooms());
 });
 
 io.on("connection", socket => {
-    console.log("Connected:", socket.id);
+  socket.emit("servers:list", listRooms());
 
-    socket.emit("servers:list", publicServerList());
+  socket.on("servers:list", () => {
+    socket.emit("servers:list", listRooms());
+  });
 
-    socket.on("servers:list", () => {
-        socket.emit("servers:list", publicServerList());
+  socket.on("servers:join", (data = {}, callback) => {
+    const reply = typeof callback === "function"
+      ? callback
+      : () => {};
+
+    let room = data.serverId
+      ? rooms.get(String(data.serverId))
+      : [...rooms.values()].find(r => r.players.size < MAX_PLAYERS);
+
+    if (data.serverId && !room) {
+      return reply({ ok: false, error: "Server not found." });
+    }
+
+    if (room && room.players.size >= MAX_PLAYERS) {
+      return reply({ ok: false, error: "Server is full." });
+    }
+
+    if (!room) room = createRoom();
+
+    if (socket.data.roomId) leaveRoom(socket);
+    if (room.emptyTimer) clearTimeout(room.emptyTimer);
+    room.emptyTimer = null;
+
+    const name = String(data.name || "CosmoPlayer")
+      .replace(/[<>]/g, "")
+      .slice(0, 16);
+
+    room.players.set(socket.id, { id: socket.id, name });
+    socket.data.roomId = room.id;
+    socket.join(room.id);
+
+    reply({
+      ok: true,
+      server: {
+        id: room.id,
+        name: room.name,
+        players: room.players.size,
+        maxPlayers: MAX_PLAYERS
+      }
     });
 
-    socket.on("servers:join", (data, callback) => {
-        const reply = typeof callback === "function"
-            ? callback
-            : () => {};
-
-        if (socket.data.serverId) {
-            leaveServer(socket);
-        }
-
-        let room;
-
-        if (data && typeof data.serverId === "string") {
-            room = servers.get(data.serverId);
-
-            if (!room) {
-                return reply({
-                    ok: false,
-                    error: "Ce serveur n'existe plus."
-                });
-            }
-
-            if (room.players.size >= MAX_PLAYERS) {
-                return reply({
-                    ok: false,
-                    error: "Ce serveur est complet."
-                });
-            }
-        } else {
-            room = getAvailableServer();
-        }
-
-        if (room.emptyTimer) {
-            clearTimeout(room.emptyTimer);
-            room.emptyTimer = null;
-        }
-
-        const name = String(data?.name || "CosmoPlayer")
-            .replace(/[<>]/g, "")
-            .trim()
-            .slice(0, 16) || "CosmoPlayer";
-
-        room.players.set(socket.id, {
-            id: socket.id,
-            name
-        });
-
-        socket.data.serverId = room.id;
-        socket.join(room.id);
-
-        reply({
-            ok: true,
-            server: {
-                id: room.id,
-                name: room.name,
-                players: room.players.size,
-                maxPlayers: MAX_PLAYERS
-            },
-            playerId: socket.id
-        });
-
-        io.to(room.id).emit("server:players", {
-            serverId: room.id,
-            players: room.players.size,
-            maxPlayers: MAX_PLAYERS
-        });
-
-        io.to(room.id).emit("server:player-joined", {
-            id: socket.id,
-            name
-        });
-
-        updateLists();
-        console.log(`${name} joined ${room.name}`);
+    io.to(room.id).emit("server:players", {
+      id: room.id,
+      players: room.players.size,
+      maxPlayers: MAX_PLAYERS
     });
 
-    socket.on("servers:leave", () => {
-        leaveServer(socket);
-    });
+    broadcastList();
+  });
 
-    socket.on("disconnect", () => {
-        leaveServer(socket);
-        console.log("Disconnected:", socket.id);
-    });
+  socket.on("servers:leave", () => leaveRoom(socket));
+  socket.on("disconnect", () => leaveRoom(socket));
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Nexor.io running on port ${PORT}`);
+  console.log(`Nexor.io online on port ${PORT}`);
 });
