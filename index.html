@@ -6163,5 +6163,250 @@ async function toggleAdminPanel(show) {
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./auth.js"></script>
+    
+<style>
+#nxServers {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(3, 7, 20, .94);
+  color: #e8faff;
+  font-family: Arial, sans-serif;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#nxServers .nx-box {
+  width: min(520px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #0b1223;
+  border: 1px solid #22d3ee;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 0 35px #0891b233;
+}
+#nxServers h2 { color: #67e8f9; margin-top: 0; }
+#nxServers button {
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: 9px;
+  border: 1px solid #22d3ee;
+  background: #083344;
+  color: white;
+  font-weight: bold;
+}
+#nxServers button:disabled { opacity: .5; cursor: not-allowed; }
+#nxServerList { display: grid; gap: 10px; margin: 16px 0; }
+.nx-server {
+  border: 1px solid #334155;
+  background: #111c31;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.nx-muted { color: #94a3b8; font-size: 13px; }
+#nxServerMessage { min-height: 20px; color: #67e8f9; font-size: 13px; }
+.nx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+
+<div id="nxServers">
+  <div class="nx-box">
+    <h2>🌌 NEXOR.IO — PUBLIC SERVERS</h2>
+    <p class="nx-muted">Join a match with players around the world.</p>
+    <p id="nxConnection" class="nx-muted">Connecting...</p>
+
+    <div class="nx-actions">
+      <button id="nxQuickJoin">QUICK PLAY</button>
+      <button id="nxRefresh">↻ REFRESH</button>
+      <button id="nxClose">CLOSE</button>
+    </div>
+
+    <div id="nxServerList"></div>
+    <p id="nxServerMessage" role="status"></p>
+    <button id="nxLeave" hidden>LEAVE SERVER</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const SERVER_URL = "https://exario-server-1.onrender.com";
+  const $ = id => document.getElementById(id);
+
+  const panel = $("nxServers");
+  const list = $("nxServerList");
+  const connection = $("nxConnection");
+  const message = $("nxServerMessage");
+  const quickJoin = $("nxQuickJoin");
+  const leaveButton = $("nxLeave");
+
+  // Creates the menu-opening button without replacing existing menus.
+  const openButton = document.createElement("button");
+  openButton.id = "nxOpenServers";
+  openButton.textContent = "🌌 PUBLIC SERVERS";
+  openButton.style.cssText =
+    "position:fixed;right:16px;top:16px;z-index:9998;padding:12px;background:#083344;color:white;border:1px solid #22d3ee;border-radius:10px;cursor:pointer;font-weight:bold";
+  document.body.appendChild(openButton);
+
+  let socket = null;
+  let currentServer = null;
+  let serverList = [];
+
+  openButton.addEventListener("click", () => {
+    panel.style.display = "flex";
+    connect();
+    if (socket?.connected) socket.emit("servers:list");
+  });
+
+  $("nxClose").addEventListener("click", () => {
+    panel.style.display = "none";
+  });
+
+  function connect() {
+    if (socket) {
+      if (socket.connected) socket.emit("servers:list");
+      return;
+    }
+
+    if (!window.io) {
+      connection.textContent = "Socket.IO failed to load. Check the script tag.";
+      return;
+    }
+
+    socket = io(SERVER_URL, { reconnection: true, timeout: 20000 });
+
+    socket.on("connect", () => {
+      connection.textContent = "🟢 Connected to Nexor.io";
+      socket.emit("servers:list");
+    });
+
+    socket.on("disconnect", () => {
+      connection.textContent = "🔴 Reconnecting...";
+      currentServer = null;
+      leaveButton.hidden = true;
+      quickJoin.disabled = false;
+      quickJoin.textContent = "QUICK PLAY";
+      render();
+    });
+
+    socket.on("connect_error", () => {
+      connection.textContent = "Connection failed. Retrying...";
+    });
+
+    socket.on("servers:list", servers => {
+      serverList = Array.isArray(servers) ? servers : [];
+      render();
+    });
+
+    socket.on("server:players", data => {
+      const server = serverList.find(s => s.id === data.id);
+      if (server) server.players = data.players;
+      render();
+    });
+  }
+
+  function render() {
+    list.replaceChildren();
+
+    if (!serverList.length) {
+      const empty = document.createElement("p");
+      empty.className = "nx-muted";
+      empty.textContent = "No active servers yet. Click QUICK PLAY to create one.";
+      list.appendChild(empty);
+      return;
+    }
+
+    serverList.forEach(server => {
+      const card = document.createElement("div");
+      card.className = "nx-server";
+
+      const info = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = server.name;
+
+      const players = document.createElement("div");
+      players.className = "nx-muted";
+      players.textContent = `${server.players}/${server.maxPlayers} players`;
+
+      info.append(name, players);
+
+      const join = document.createElement("button");
+      join.textContent =
+        currentServer?.id === server.id ? "JOINED ✓" : "JOIN";
+      join.disabled = !!currentServer ||
+        server.players >= server.maxPlayers;
+      join.addEventListener("click", () => joinServer(server.id));
+
+      card.append(info, join);
+      list.appendChild(card);
+    });
+  }
+
+  function getPlayerName() {
+    const input = document.getElementById("playerNameInput");
+    return input?.value?.trim() || "CosmoPlayer";
+  }
+
+  function joinServer(serverId = null) {
+    if (!socket?.connected) {
+      message.textContent = "Waiting for connection...";
+      return;
+    }
+
+    if (currentServer) {
+      message.textContent = "Leave your current server first.";
+      return;
+    }
+
+    quickJoin.disabled = true;
+    message.textContent = "Joining server...";
+
+    socket.emit("servers:join", {
+      serverId,
+      name: getPlayerName()
+    }, result => {
+      quickJoin.disabled = false;
+
+      if (!result?.ok) {
+        message.textContent = result?.error || "Could not join.";
+        return;
+      }
+
+      currentServer = result.server;
+      quickJoin.textContent = "CONNECTED ✓";
+      leaveButton.hidden = false;
+      message.textContent =
+        `Connected to ${result.server.name}. ` +
+        `${result.server.players}/${result.server.maxPlayers} players.`;
+
+      render();
+    });
+  }
+
+  quickJoin.addEventListener("click", () => joinServer());
+  $("nxRefresh").addEventListener("click", () => {
+    if (socket?.connected) socket.emit("servers:list");
+    else connect();
+  });
+
+  leaveButton.addEventListener("click", () => {
+    if (socket?.connected) socket.emit("servers:leave");
+
+    currentServer = null;
+    leaveButton.hidden = true;
+    quickJoin.textContent = "QUICK PLAY";
+    message.textContent = "You left the server.";
+    if (socket?.connected) socket.emit("servers:list");
+    render();
+  });
+})();
+</script>
+</body>
+</html>
+
 </body>
 </html>
