@@ -457,67 +457,30 @@
         </div>
     </div>
 
-    
-<!-- ACCOUNT -->
-<div id="accountModal" class="hidden absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[85] p-4">
-    <div class="bg-gray-900/95 p-6 rounded-2xl neon-box max-w-xs w-full text-center space-y-3">
-
-        <h2 class="text-xl font-black text-cyan-300 tracking-wider">👤 ACCOUNT</h2>
-
-        <div class="flex border-b border-gray-800 text-sm font-semibold">
-            <button id="accTabLogin" type="button" class="flex-1 py-1.5 tab-active">Log in</button>
-            <button id="accTabSignup" type="button" class="flex-1 py-1.5 text-gray-400 hover:text-cyan-300">Sign up</button>
+    <!-- ACCOUNT -->
+    <div id="accountModal" class="hidden absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[85] p-4">
+        <div class="bg-gray-900/95 p-6 rounded-2xl neon-box max-w-xs w-full text-center space-y-3">
+            <h2 class="text-xl font-black text-cyan-300 tracking-wider">👤 ACCOUNT</h2>
+            <div class="flex border-b border-gray-800 text-sm font-semibold">
+                <button id="accTabLogin" class="flex-1 py-1.5 tab-active">Log in</button>
+                <button id="accTabSignup" class="flex-1 py-1.5 text-gray-400 hover:text-cyan-300">Sign up</button>
+            </div>
+            <input id="accEmail" type="email" maxlength="254" autocomplete="email" placeholder="Email address" required
+                class="w-full bg-gray-800/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-white text-center font-bold focus:outline-none focus:border-cyan-400">
+            <input id="accUser" type="text" maxlength="15" autocomplete="username" placeholder="Username (3–15 characters)"
+                class="w-full bg-gray-800/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-white text-center font-bold focus:outline-none focus:border-cyan-400">
+            <input id="accPass" type="password" maxlength="40" autocomplete="current-password" placeholder="Password"
+                class="w-full bg-gray-800/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-white text-center font-bold focus:outline-none focus:border-cyan-400">
+            <input id="accPass2" type="password" maxlength="40" autocomplete="new-password" placeholder="Confirm password"
+                class="hidden w-full bg-gray-800/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-white text-center font-bold focus:outline-none focus:border-cyan-400">
+            <p id="accErr" class="text-xs text-red-400 min-h-[14px]"></p>
+            <p id="accInfo" class="text-[10px] text-gray-400">Accounts use Supabase Auth. Game progress is currently saved in this browser only.</p>
+            <div class="flex gap-2">
+                <button id="accCancel" class="flex-1 py-2 rounded-xl text-xs font-bold text-gray-300 border border-gray-600 hover:border-gray-400">Cancel</button>
+                <button id="accOk" class="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500">Log in</button>
+            </div>
         </div>
-
-        <input
-            id="accUser"
-            type="text"
-            maxlength="15"
-            autocomplete="username"
-            placeholder="Username"
-            class="w-full bg-gray-800/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-white text-center font-bold focus:outline-none focus:border-cyan-400"
-        >
-
-        <input
-    id="accEmail"
-    type="email"
-    placeholder="EMAIL ADDRESS"
-    autocomplete="email"
-    required
-    style="display:block !important; visibility:visible !important; opacity:1 !important; width:100% !important; position:relative !important; z-index:9999 !important; color:white !important; background:#1f2937 !important; padding:10px !important; border:1px solid #06b6d4 !important; border-radius:12px !important; margin:8px 0 !important;"
->
-        <input
-            id="accPass"
-            type="password"
-            maxlength="40"
-            autocomplete="current-password"
-            placeholder="Password"
-            class="w-full bg-gray-800/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-white text-center font-bold focus:outline-none focus:border-cyan-400"
-        >
-
-        <input
-            id="accPass2"
-            type="password"
-            maxlength="40"
-            autocomplete="new-password"
-            placeholder="Confirm password"
-            class="hidden w-full bg-gray-800/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-white text-center font-bold focus:outline-none focus:border-cyan-400"
-        >
-
-        <p id="accErr" class="text-xs text-red-400 min-h-[14px]"></p>
-
-        <p id="accInfo" class="text-[10px] text-gray-400">
-            Accounts use Supabase Auth. Game progress is currently saved in this browser only.
-        </p>
-
-        <div class="flex gap-2">
-            <button id="accCancel" type="button" class="flex-1 py-2 rounded-xl text-xs font-bold text-gray-300 border border-gray-600 hover:border-gray-400">Cancel</button>
-            <button id="accOk" type="button" class="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500">Log in</button>
-        </div>
-
     </div>
-</div>
-
 
     <!-- ADMIN : panneau -->
     <div id="adminPanel" class="hidden absolute top-24 right-4 w-72 max-h-[80vh] overflow-y-auto scroll-ok bg-gray-900/95 backdrop-blur-md p-4 rounded-2xl border border-red-500/60 shadow-[0_0_30px_rgba(255,0,60,0.3)] z-[75] text-xs space-y-3">
@@ -3843,6 +3806,7 @@
             hostLobby = false;
             menuOpen = false;
             netEntities.clear(); ejectMap = new Map(); myId = 0;
+            if (typeof nxUnpublishRoom === 'function') nxUnpublishRoom();
             roomCode = '';
             setNetButtons(false);
             updateRoomBadge();
@@ -3880,6 +3844,7 @@
                 clearTimeout(openTimer);
                 roomCode = code;
                 hostLobby = true;          // salon d'attente : l'hôte lance la partie quand il veut
+                if (typeof nxPublishRoom === 'function') nxPublishRoom('lobby');
                 setNetStatus('');
                 updateLobbyUI();
             });
@@ -3918,6 +3883,7 @@
             // le joueur parti disparaît de la partie
             if (g.ent) { g.ent.cells = []; g.ent.netGuest = null; }
             if (g.prof) toast(g.prof.name + ' left the game');
+            if (typeof nxPublishRoom === 'function') nxPublishRoom(hostLobby ? 'lobby' : 'game');
             updateRoomBadge();
             updateLobbyUI();
         }
@@ -4273,6 +4239,7 @@
             if (!hostLobby) return;
             try {
                 hostLobby = false;
+                if (typeof nxPublishRoom === 'function') nxPublishRoom('game');
                 updateLobbyUI();
                 startGame('host');
                 setNetStatus('');
@@ -5362,37 +5329,16 @@
             document.getElementById('adminLoginErr').textContent = '';
             const inp = document.getElementById('adminCodeInput'); inp.value = ''; setTimeout(() => inp.focus(), 30);
         }
-        
-async function toggleAdminPanel(show) {
-    const p = document.getElementById('adminPanel');
-    const v = show === undefined ? p.classList.contains('hidden') : show;
-
-    if (v) {
-        if (typeof exarIsAdmin !== 'function' || !(await exarIsAdmin())) {
-            p.classList.add('hidden');
-            return;
+        function toggleAdminPanel(show) {
+            const p = document.getElementById('adminPanel');
+            const v = show === undefined ? p.classList.contains('hidden') : show;
+            p.classList.toggle('hidden', !v);
+            if (v) refreshAdminUI();
         }
-    }
-
-    p.classList.toggle('hidden', !v);
-
-    if (v) refreshAdminUI();
-}
-
-        async function tryAdminLogin() 
-{
-    const inp = document.getElementById('adminCodeInput');
-
-    if (!(await exarIsAdmin())) {
-        alert("Accès refusé : ton compte n'est pas autorisé à utiliser le panel admin.");
-        inp.value = '';
-        return;
-    }
-
-    if (inp.value.trim().toUpperCase() === ADMIN_CODE) {
-        adminOn = true;
-        localStorage.setItem('nebulous_admin', '1');
-
+        function tryAdminLogin() {
+            const inp = document.getElementById('adminCodeInput');
+            if (inp.value.trim().toUpperCase() === ADMIN_CODE) {
+                adminOn = true; localStorage.setItem('nebulous_admin', '1');
                 document.getElementById('adminLogin').classList.add('hidden');
                 applyAdminState(); toggleAdminPanel(true);
                 toast('🛡️ Admin mode enabled');
@@ -6153,379 +6099,87 @@ async function toggleAdminPanel(show) {
                 exchange(n);
             } else exchange(b.dataset.n);
         });
-        
-        $('pmpExBtn').onclick = () => {
-            exchange($('pmpExInput').value);
-            $('pmpExInput').value = '';
-        };
+        $('pmpExBtn').onclick = () => { exchange($('pmpExInput').value); $('pmpExInput').value = ''; };
     })();
     </script>
+    <script type="module" src="./auth.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./auth.js"></script>
-    
 <style>
-#nxServers {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  background: rgba(3, 7, 20, .94);
-  color: #e8faff;
-  font-family: Arial, sans-serif;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-#nxServers .nx-box {
-  width: min(520px, 100%);
-  max-height: 85vh;
-  overflow-y: auto;
-  background: #0b1223;
-  border: 1px solid #22d3ee;
-  border-radius: 18px;
-  padding: 20px;
-  box-shadow: 0 0 35px #0891b233;
-}
-#nxServers h2 { color: #67e8f9; margin-top: 0; }
-#nxServers button {
-  cursor: pointer;
-  padding: 10px 14px;
-  border-radius: 9px;
-  border: 1px solid #22d3ee;
-  background: #083344;
-  color: white;
-  font-weight: bold;
-}
-#nxServers button:disabled { opacity: .5; cursor: not-allowed; }
-#nxServerList { display: grid; gap: 10px; margin: 16px 0; }
-.nx-server {
-  border: 1px solid #334155;
-  background: #111c31;
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.nx-muted { color: #94a3b8; font-size: 13px; }
-#nxServerMessage { min-height: 20px; color: #67e8f9; font-size: 13px; }
-.nx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+#nxPublicOpen{position:fixed;right:16px;top:16px;z-index:10001;border:1px solid #22d3ee;border-radius:12px;background:#082f49;color:#e0f2fe;padding:11px 15px;font-weight:800;cursor:pointer;box-shadow:0 0 22px #0891b255}
+#nxPublicPanel{display:none;position:fixed;inset:0;z-index:10000;background:#020617eF;align-items:center;justify-content:center;padding:16px;color:#e2e8f0;font-family:Inter,system-ui,sans-serif}
+#nxPublicPanel .nx-card{width:min(620px,100%);max-height:85vh;overflow:auto;background:#0b1224;border:1px solid #164e63;border-radius:18px;padding:20px;box-shadow:0 0 45px #06b6d455}
+#nxPublicPanel h2{font-size:22px;font-weight:900;color:#67e8f9;margin:0 0 5px}#nxPublicPanel .nx-muted{color:#94a3b8;font-size:13px}
+#nxPublicPanel button{border:1px solid #155e75;border-radius:9px;background:#083344;color:#cffafe;padding:9px 12px;font-weight:800;cursor:pointer}
+#nxPublicPanel button:disabled{opacity:.45;cursor:not-allowed}.nx-public-row{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px;margin-top:9px;background:#111c31;border:1px solid #26364d;border-radius:12px}.nx-public-row strong{display:block}.nx-public-row small{color:#94a3b8}.nx-public-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
 </style>
-
-<div id="nxServers">
-  <div class="nx-box">
-    <h2>🌌 NEXOR.IO — PUBLIC SERVERS</h2>
-    <p class="nx-muted">Join a match with players around the world.</p>
-    <p id="nxConnection" class="nx-muted">Connecting...</p>
-
-    <div class="nx-actions">
-      <button id="nxQuickJoin">QUICK PLAY</button>
-      <button id="nxRefresh">↻ REFRESH</button>
-      <button id="nxClose">CLOSE</button>
-    </div>
-
-    <div id="nxServerList"></div>
-    <p id="nxServerMessage" role="status"></p>
-    <button id="nxLeave" hidden>LEAVE SERVER</button>
-  </div>
+<button id="nxPublicOpen" type="button">🌌 PUBLIC SERVERS</button>
+<div id="nxPublicPanel" role="dialog" aria-modal="true" aria-label="Public servers">
+ <div class="nx-card">
+  <h2>🌌 NEXOR.IO — PUBLIC SERVERS</h2><p class="nx-muted">Join a real PeerJS game. Public rooms use the existing waiting lobby.</p>
+  <p id="nxPublicConnection" class="nx-muted">Connecting to server list…</p>
+  <div class="nx-public-actions"><button id="nxPublicQuick">QUICK PLAY</button><button id="nxPublicRefresh">↻ REFRESH</button><button id="nxPublicClose">CLOSE</button></div>
+  <div id="nxPublicList"></div><p id="nxPublicMessage" role="status" class="nx-muted"></p>
+ </div>
 </div>
-
 <script>
 (() => {
-  const SERVER_URL = "https://exario-server-1.onrender.com";
-  const $ = id => document.getElementById(id);
-
-  const panel = $("nxServers");
-  const list = $("nxServerList");
-  const connection = $("nxConnection");
-  const message = $("nxServerMessage");
-  const quickJoin = $("nxQuickJoin");
-  const leaveButton = $("nxLeave");
-
-  // Creates the menu-opening button without replacing existing menus.
-  const openButton = document.createElement("button");
-  openButton.id = "nxOpenServers";
-  openButton.textContent = "🌌 PUBLIC SERVERS";
-  openButton.style.cssText =
-    "position:fixed;right:16px;top:16px;z-index:9998;padding:12px;background:#083344;color:white;border:1px solid #22d3ee;border-radius:10px;cursor:pointer;font-weight:bold";
-  document.body.appendChild(openButton);
-
-  let socket = null;
-  let currentServer = null;
-  let serverList = [];
-
-  openButton.addEventListener("click", () => {
-    panel.style.display = "flex";
-    connect();
-    if (socket?.connected) socket.emit("servers:list");
+ const URL='https://exario-server-1.onrender.com';
+ const $=id=>document.getElementById(id);
+ const panel=$('nxPublicPanel'), list=$('nxPublicList'), status=$('nxPublicConnection'), message=$('nxPublicMessage'), quick=$('nxPublicQuick');
+ let socket=null, rooms=[], refreshTimer=null;
+ function playerName(){return (document.getElementById('playerNameInput')?.value||'').trim().slice(0,16)||'CosmoPlayer';}
+ function getRoomCode(){return (typeof roomCode==='string'?roomCode:'').toUpperCase();}
+ function currentPlayers(){return 1+(Array.isArray(guests)?guests.filter(g=>g.prof).length:0);}
+ function nxPublishRoom(state){
+  if(!socket?.connected || typeof hostLobby==='undefined' || !peer || !getRoomCode())return;
+  socket.emit('public:register',{code:getRoomCode(),name:playerName(),players:currentPlayers(),maxPlayers:1+(Number(maxGuests)||1),status:state||(hostLobby?'lobby':'game')});
+ }
+ function nxUnpublishRoom(){if(socket?.connected && getRoomCode())socket.emit('public:unregister',{code:getRoomCode()});}
+ // Make the hooks available to the game's existing networking functions.
+ window.nxPublishRoom=nxPublishRoom; window.nxUnpublishRoom=nxUnpublishRoom;
+ function connect(){
+  if(socket){if(socket.connected)socket.emit('public:list');return;}
+  if(!window.io){status.textContent='Socket.IO failed to load.';return;}
+  socket=io(URL,{reconnection:true,timeout:20000,transports:['websocket','polling']});
+  socket.on('connect',()=>{status.textContent='🟢 Connected to public server list';socket.emit('public:list');if(typeof hostLobby!=='undefined'&&hostLobby)nxPublishRoom('lobby');});
+  socket.on('disconnect',()=>{status.textContent='🔴 Reconnecting…';});
+  socket.on('connect_error',()=>{status.textContent='Could not reach public server list; retrying…';});
+  socket.on('public:rooms',data=>{rooms=Array.isArray(data)?data:[];render();});
+ }
+ function join(code){
+  if(typeof startJoin!=='function'){message.textContent='Game networking is not ready.';return;}
+  $('joinCodeInput').value=code;panel.style.display='none';message.textContent='Connecting to '+code+'…';startJoin();
+ }
+ function render(){
+  list.replaceChildren();
+  const available=rooms.filter(r=>r.code!==getRoomCode()&&r.players<r.maxPlayers);
+  if(!rooms.length){const p=document.createElement('p');p.className='nx-muted';p.textContent='No public games yet. QUICK PLAY will create a lobby for you.';list.appendChild(p);return;}
+  rooms.forEach(r=>{
+   const row=document.createElement('div');row.className='nx-public-row';const info=document.createElement('div');
+   const name=document.createElement('strong');name.textContent=(r.name||'Nexor Arena')+' · '+r.code;
+   const details=document.createElement('small');details.textContent=`${r.players}/${r.maxPlayers} players · ${r.status==='lobby'?'Waiting lobby':'Game in progress'}`;info.append(name,details);
+   const btn=document.createElement('button');btn.textContent=r.code===getRoomCode()?'YOUR LOBBY':'JOIN';btn.disabled=r.code===getRoomCode()||r.players>=r.maxPlayers;btn.addEventListener('click',()=>join(r.code));row.append(info,btn);list.appendChild(row);
   });
-
-  $("nxClose").addEventListener("click", () => {
-    panel.style.display = "none";
-  });
-
-  function connect() {
-    if (socket) {
-      if (socket.connected) socket.emit("servers:list");
-      return;
-    }
-
-    if (!window.io) {
-      connection.textContent = "Socket.IO failed to load. Check the script tag.";
-      return;
-    }
-
-    socket = io(SERVER_URL, { reconnection: true, timeout: 20000 });
-
-    socket.on("connect", () => {
-      connection.textContent = "🟢 Connected to Nexor.io";
-      socket.emit("servers:list");
-    });
-
-    socket.on("disconnect", () => {
-      connection.textContent = "🔴 Reconnecting...";
-      currentServer = null;
-      leaveButton.hidden = true;
-      quickJoin.disabled = false;
-      quickJoin.textContent = "QUICK PLAY";
-      render();
-    });
-
-    socket.on("connect_error", () => {
-      connection.textContent = "Connection failed. Retrying...";
-    });
-
-    socket.on("servers:list", servers => {
-      serverList = Array.isArray(servers) ? servers : [];
-      render();
-    });
-
-    socket.on("server:players", data => {
-      const server = serverList.find(s => s.id === data.id);
-      if (server) server.players = data.players;
-      render();
-    });
+ }
+ $('nxPublicOpen').addEventListener('click',()=>{panel.style.display='flex';connect();if(socket?.connected)socket.emit('public:list');});
+ $('nxPublicClose').addEventListener('click',()=>panel.style.display='none');
+ panel.addEventListener('click',e=>{if(e.target===panel)panel.style.display='none';});
+ $('nxPublicRefresh').addEventListener('click',()=>{connect();if(socket?.connected)socket.emit('public:list');});
+ quick.addEventListener('click',()=>{
+  connect();
+  const ownCode=getRoomCode();
+  const target=rooms.find(r=>r.code!==ownCode&&r.players<r.maxPlayers);
+  if(target){join(target.code);return;}
+  panel.style.display='none';
+  if(typeof startHost==='function'){
+   message.textContent='No available public game. Creating your lobby…';
+   document.getElementById('hostButton')?.click();
   }
-
-  function render() {
-    list.replaceChildren();
-
-    if (!serverList.length) {
-      const empty = document.createElement("p");
-      empty.className = "nx-muted";
-      empty.textContent = "No active servers yet. Click QUICK PLAY to create one.";
-      list.appendChild(empty);
-      return;
-    }
-
-    serverList.forEach(server => {
-      const card = document.createElement("div");
-      card.className = "nx-server";
-
-      const info = document.createElement("div");
-      const name = document.createElement("strong");
-      name.textContent = server.name;
-
-      const players = document.createElement("div");
-      players.className = "nx-muted";
-      players.textContent = `${server.players}/${server.maxPlayers} players`;
-
-      info.append(name, players);
-
-      const join = document.createElement("button");
-      join.textContent =
-        currentServer?.id === server.id ? "JOINED ✓" : "JOIN";
-      join.disabled = !!currentServer ||
-        server.players >= server.maxPlayers;
-      join.addEventListener("click", () => joinServer(server.id));
-
-      card.append(info, join);
-      list.appendChild(card);
-    });
-  }
-
-  function getPlayerName() {
-    const input = document.getElementById("playerNameInput");
-    return input?.value?.trim() || "CosmoPlayer";
-  }
-
-  function joinServer(serverId = null) {
-    if (!socket?.connected) {
-      message.textContent = "Waiting for connection...";
-      return;
-    }
-
-    if (currentServer) {
-      message.textContent = "Leave your current server first.";
-      return;
-    }
-
-    quickJoin.disabled = true;
-    message.textContent = "Joining server...";
-
-    socket.emit("servers:join", {
-      serverId,
-      name: getPlayerName()
-    }, result => {
-      quickJoin.disabled = false;
-
-      if (!result?.ok) {
-        message.textContent = result?.error || "Could not join.";
-        return;
-      }
-
-      currentServer = result.server;
-      quickJoin.textContent = "CONNECTED ✓";
-      leaveButton.hidden = false;
-      message.textContent =
-        `Connected to ${result.server.name}. ` +
-        `${result.server.players}/${result.server.maxPlayers} players.`;
-
-      render();
-    });
-  }
-
-  quickJoin.addEventListener("click", () => joinServer());
-  $("nxRefresh").addEventListener("click", () => {
-    if (socket?.connected) socket.emit("servers:list");
-    else connect();
-  });
-
-  leaveButton.addEventListener("click", () => {
-    if (socket?.connected) socket.emit("servers:leave");
-
-    currentServer = null;
-    leaveButton.hidden = true;
-    quickJoin.textContent = "QUICK PLAY";
-    message.textContent = "You left the server.";
-    if (socket?.connected) socket.emit("servers:list");
-    render();
-  });
-})();
-</script>
-</body>
-</html>
-
-<style>
-  .nx-draggable-button {
-    cursor: grab !important;
-    touch-action: none !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
-  }
-
-  .nx-draggable-button.nx-dragging {
-    cursor: grabbing !important;
-    z-index: 999999 !important;
-  }
-</style>
-
-<script>
-(() => {
-  const labels = ["PUBLIC SERVERS", "ADMIN"];
-  const initialized = new WeakSet();
-
-  function setupDraggableButtons() {
-    const elements = document.querySelectorAll(
-      "button, [role='button'], input[type='button'], input[type='submit']"
-    );
-
-    elements.forEach(element => {
-      const text = (
-        element.innerText ||
-        element.value ||
-        element.getAttribute("aria-label") ||
-        ""
-      ).trim().toUpperCase();
-
-      const label = labels.find(name =>
-        text === name || text.startsWith(name + " ")
-      );
-
-      if (!label || initialized.has(element)) return;
-
-      initialized.add(element);
-      element.classList.add("nx-draggable-button");
-
-      let startX = 0;
-      let startY = 0;
-      let originalX = 0;
-      let originalY = 0;
-      let dragging = false;
-      let moved = false;
-
-      element.addEventListener("pointerdown", event => {
-        if (event.button !== 0 && event.pointerType === "mouse") return;
-
-        const rect = element.getBoundingClientRect();
-        startX = event.clientX;
-        startY = event.clientY;
-        originalX = rect.left;
-        originalY = rect.top;
-        dragging = true;
-        moved = false;
-
-        element.classList.add("nx-dragging");
-        element.style.position = "fixed";
-        element.style.left = rect.left + "px";
-        element.style.top = rect.top + "px";
-        element.style.right = "auto";
-        element.style.bottom = "auto";
-        element.style.margin = "0";
-        element.style.zIndex = "999999";
-      });
-
-      element.addEventListener("pointermove", event => {
-        if (!dragging) return;
-
-        const dx = event.clientX - startX;
-        const dy = event.clientY - startY;
-
-        if (Math.abs(dx) + Math.abs(dy) > 5) moved = true;
-        if (!moved) return;
-
-        const maxX = window.innerWidth - element.offsetWidth;
-        const maxY = window.innerHeight - element.offsetHeight;
-
-        element.style.left =
-          Math.max(0, Math.min(maxX, originalX + dx)) + "px";
-        element.style.top =
-          Math.max(0, Math.min(maxY, originalY + dy)) + "px";
-      });
-
-      function stopDragging() {
-        if (!dragging) return;
-        dragging = false;
-        element.classList.remove("nx-dragging");
-
-        if (moved) {
-          element.dataset.nxJustDragged = "true";
-          setTimeout(() => {
-            delete element.dataset.nxJustDragged;
-          }, 250);
-        }
-      }
-
-      element.addEventListener("pointerup", stopDragging);
-      element.addEventListener("pointercancel", stopDragging);
-
-      element.addEventListener("click", event => {
-        if (element.dataset.nxJustDragged === "true") {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-        }
-      }, true);
-    });
-  }
-
-  setupDraggableButtons();
-
-  new MutationObserver(setupDraggableButtons).observe(
-    document.documentElement,
-    { childList: true, subtree: true }
-  );
+ });
+ connect();
+ refreshTimer=setInterval(()=>{
+  if(socket?.connected){socket.emit('public:list');if(typeof hostLobby!=='undefined'&&peer&&getRoomCode())nxPublishRoom(hostLobby?'lobby':'game');}
+ },8000);
 })();
 </script>
 
