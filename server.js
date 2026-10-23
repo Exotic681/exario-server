@@ -1,4 +1,4 @@
-
+```js
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -6,19 +6,25 @@ const { randomUUID } = require("crypto");
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
-  cors: { origin: "*" }
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
 });
 
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 50;
+const EMPTY_ROOM_DELAY = 15000;
+
 const rooms = new Map();
 
 function listRooms() {
-  return [...rooms.values()].map(r => ({
-    id: r.id,
-    name: r.name,
-    players: r.players.size,
+  return Array.from(rooms.values()).map(room => ({
+    id: room.id,
+    name: room.name,
+    players: room.players.size,
     maxPlayers: MAX_PLAYERS
   }));
 }
@@ -29,40 +35,47 @@ function broadcastList() {
 
 function createRoom() {
   const id = randomUUID().slice(0, 8);
+
   const room = {
     id,
     name: `Cosmic Arena ${id.toUpperCase()}`,
     players: new Map(),
     emptyTimer: null
   };
+
   rooms.set(id, room);
   return room;
 }
 
 function leaveRoom(socket) {
-  const id = socket.data.roomId;
-  if (!id) return;
+  const roomId = socket.data.roomId;
 
-  const room = rooms.get(id);
+  if (!roomId) return;
+
   delete socket.data.roomId;
+
+  const room = rooms.get(roomId);
+
   if (!room) return;
 
   room.players.delete(socket.id);
-  socket.leave(id);
+  socket.leave(roomId);
 
-  io.to(id).emit("server:players", {
-    id,
+  io.to(roomId).emit("server:players", {
+    id: roomId,
     players: room.players.size,
     maxPlayers: MAX_PLAYERS
   });
 
   if (room.players.size === 0) {
     room.emptyTimer = setTimeout(() => {
-      if (rooms.get(id)?.players.size === 0) {
-        rooms.delete(id);
+      const currentRoom = rooms.get(roomId);
+
+      if (currentRoom && currentRoom.players.size === 0) {
+        rooms.delete(roomId);
         broadcastList();
       }
-    }, 15000);
+    }, EMPTY_ROOM_DELAY);
   }
 
   broadcastList();
@@ -82,6 +95,8 @@ app.get("/api/servers", (req, res) => {
 });
 
 io.on("connection", socket => {
+  console.log("Client connected:", socket.id);
+
   socket.emit("servers:list", listRooms());
 
   socket.on("servers:list", () => {
@@ -89,33 +104,58 @@ io.on("connection", socket => {
   });
 
   socket.on("servers:join", (data = {}, callback) => {
-    const reply = typeof callback === "function"
-      ? callback
-      : () => {};
+    const reply =
+      typeof callback === "function"
+        ? callback
+        : () => {};
 
-    let room = data.serverId
-      ? rooms.get(String(data.serverId))
-      : [...rooms.values()].find(r => r.players.size < MAX_PLAYERS);
+    let room;
 
-    if (data.serverId && !room) {
-      return reply({ ok: false, error: "Server not found." });
+    if (data.serverId) {
+      room = rooms.get(String(data.serverId));
+
+      if (!room) {
+        return reply({
+          ok: false,
+          error: "Server not found."
+        });
+      }
+    } else {
+      room = Array.from(rooms.values()).find(
+        candidate => candidate.players.size < MAX_PLAYERS
+      );
     }
 
     if (room && room.players.size >= MAX_PLAYERS) {
-      return reply({ ok: false, error: "Server is full." });
+      return reply({
+        ok: false,
+        error: "Server is full."
+      });
     }
 
-    if (!room) room = createRoom();
+    if (!room) {
+      room = createRoom();
+    }
 
-    if (socket.data.roomId) leaveRoom(socket);
-    if (room.emptyTimer) clearTimeout(room.emptyTimer);
-    room.emptyTimer = null;
+    if (socket.data.roomId) {
+      leaveRoom(socket);
+    }
+
+    if (room.emptyTimer) {
+      clearTimeout(room.emptyTimer);
+      room.emptyTimer = null;
+    }
 
     const name = String(data.name || "CosmoPlayer")
       .replace(/[<>]/g, "")
-      .slice(0, 16);
+      .trim()
+      .slice(0, 16) || "CosmoPlayer";
 
-    room.players.set(socket.id, { id: socket.id, name });
+    room.players.set(socket.id, {
+      id: socket.id,
+      name
+    });
+
     socket.data.roomId = room.id;
     socket.join(room.id);
 
@@ -138,10 +178,17 @@ io.on("connection", socket => {
     broadcastList();
   });
 
-  socket.on("servers:leave", () => leaveRoom(socket));
-  socket.on("disconnect", () => leaveRoom(socket));
+  socket.on("servers:leave", () => {
+    leaveRoom(socket);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+    leaveRoom(socket);
+  });
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Nexor.io online on port ${PORT}`);
+  console.log(`Nexor.io server running on port ${PORT}`);
 });
+```
